@@ -1,0 +1,17 @@
+EE488 Lab 1 Part 3 Write-up
+20160609 정진하
+
+1. Score Table
+    >> I do not have a replicate score table, because my code runs into an error "stack smashing detected" and won't run anything, and prints 0/60 total score.
+
+2. Description
+    >> I divided the image into several regions, of block size 16x16. For one thread in each block (with its threadIdx.x and threadIdx.y value 0), I had it go through all of the circles provided by cuConstRendererParams be checked if the circle does affect any of the thread-block's assigned pixels (by using circleInBoxConservative() function). If it does, its index was put in indexCircle[] and its depth (position p's p.z value) was stored in depthCircle in an increasing order, so the pixels can be ordered later on. I would also record how many threads were overlapping at the total in the block in howManyOverlapping. I tried to distribute this work among different threads, but I couldn't solve the race problem, so I let one thread take care of it. Afterwards, the threads would sync, so that it could be guaranteed that all threads would start to paint the pixels after the indexCircle[] array was ready, and sorted well.
+
+3. Synchronizations
+    >> As mentioned in No.2, the #0 thread would check ordering among the circles that affect the thread-block, and then all threads would start to paint pixels. Thus, all pixels need guarantee that the #0 thread has completed its prior work, and thus __syncthread() was called between the two jobs.
+
+4. Reducing communication requirements
+    >>I made use of shared memory so that the threads in the same thread-block would at least be able to share the minimum information they could, and thus reduce the memory bandwidth of the GPU.
+
+5. Other solutions reached on the journey to the final solutions
+    >> At the beginning, I implemented a very naive version that would not care about ordering, and it obviously had some ordering issues. Thus, even though it takes more time, I had one thread assigned to order the threads. This work seemed like it could be distributed among other threads. I put some effort into this, and found out that after, adding all the values that the threads have could also be optimized through the use of prefix sum scans, but I gave this implementation up because while the threads may insert ordered sequences of circle indices, I saw no guarantee that the race condition wouldn't be violated.
